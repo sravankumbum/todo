@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>To-Do Page</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        form { margin-bottom: 30px; }
+        input, textarea { display: block; margin-bottom: 10px; width: 300px; padding: 8px; }
+        button { padding: 8px 16px; }
+        .todo-list { margin-top: 20px; }
+        .todo-item { border-bottom: 1px solid #ccc; padding: 10px 0; }
+        .todo-item:last-child { border-bottom: none; }
+    </style>
+</head>
+<body>
+    <h1>To-Do List</h1>
+    <form id="todo-form">
+        <label for="item_name">Item Name:</label>
+        <input type="text" id="item_name" name="item_name" required>
+        <label for="item_desc">Item Description:</label>
+        <textarea id="item_desc" name="item_desc" rows="3" required></textarea>
+        <button type="submit">Add Item</button>
+    </form>
+    <div class="todo-list" id="todo-list">
+        <p>No items yet.</p>
+    </div>
+    <script>
+        const form = document.getElementById('todo-form');
+        const todoList = document.getElementById('todo-list');
+        let todos = [];
+
+        // Fetch todos from backend and render
+        async function fetchTodos() {
+            try {
+                const response = await fetch('/gettodos');
+                const result = await response.json();
+                if (response.ok) {
+                    todos = result.todos;
+                    renderTodos();
+                } else {
+                    todoList.innerHTML = '<p>Failed to load items.</p>';
+                }
+            } catch (err) {
+                todoList.innerHTML = '<p>Error connecting to backend.</p>';
+            }
+        }
+
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const name = document.getElementById('item_name').value.trim();
+            const desc = document.getElementById('item_desc').value.trim();
+            if (name && desc) {
+                try {
+                    const response = await fetch('/submittodoitem', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            itemName: name,
+                            itemDescription: desc
+                        })
+                    });
+                    const result = await response.json();
+                    if (response.ok) {
+                        form.reset();
+                        await fetchTodos(); // Refresh list after adding
+                    } else {
+                        alert(result.error || 'Failed to add item.');
+                    }
+                } catch (err) {
+                    alert('Error connecting to backend.');
+                }
+            }
+        });
+
+        function renderTodos() {
+            if (todos.length === 0) {
+                todoList.innerHTML = '<p>No items yet.</p>';
+                return;
+            }
+            todoList.innerHTML = todos.map(todo => `
+                <div class="todo-item">
+                    <strong>${todo.name}</strong><br>
+                    <span>${todo.desc}</span>
+                </div>
+            `).join('');
+        }
+
+        // Initial fetch
+        fetchTodos();
+    </script>
+</body>
+</html>
